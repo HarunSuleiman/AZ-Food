@@ -34,6 +34,8 @@
                 <div>
                     <h2 class="text-xl font-bold text-gray-100">Completed Orders Log</h2>
                     <p class="text-sm text-gray-400">Total completed today: <span id="items-served-count" class="font-bold text-green-400 ml-1">0</span></p>
+                    <!-- Total Revenue Counter -->
+                    <p class="text-sm text-gray-400 mt-1">Total Sales Today: <span id="total-revenue" class="font-bold text-yellow-400 ml-1">0.00 ETB</span></p>
                 </div>
                 <button onclick="clearDailyStats()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors shadow-sm">
                     Clear Log
@@ -55,6 +57,7 @@
         const activeCountEl = document.getElementById('active-count');
         const completedListEl = document.getElementById('completed-orders-list');
         const itemsServedCountEl = document.getElementById('items-served-count');
+        const totalRevenueEl = document.getElementById('total-revenue');
 
         // Listen for the server to sync the state
         socket.on('sync-orders', (data) => {
@@ -77,8 +80,11 @@
             activeKitchenOrders.forEach(order => {
                 // Group duplicate items for the cook
                 const itemCounts = {};
+                let orderTotal = 0;
+
                 order.items.forEach(item => {
                     itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+                    orderTotal += item.price; // Calculate individual ticket total
                 });
 
                 let itemsListHTML = '';
@@ -91,7 +97,10 @@
                         <div class="flex justify-between items-start mb-3 border-b border-yellow-200 pb-3">
                             <div>
                                 <h4 class="font-bold text-xl text-yellow-900">Order #${order.id}</h4>
-                                <span class="text-sm font-semibold text-yellow-700">${order.items.length} items total</span>
+                                <div class="flex flex-col sm:flex-row sm:gap-4 text-sm font-semibold text-yellow-700">
+                                    <span>${order.items.length} items total</span>
+                                    <span class="text-gray-700">Value: ${orderTotal.toFixed(2)} ETB</span>
+                                </div>
                             </div>
                             <button onclick="serveOrder(${order.id})" class="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-lg font-bold transition-colors shadow-sm">
                                 ✓ Serve Ticket
@@ -109,24 +118,43 @@
             completedListEl.innerHTML = '';
             itemsServedCountEl.innerText = completedOrders.length;
 
+            let grandTotalRevenue = 0;
+
             if (completedOrders.length === 0) {
                 completedListEl.innerHTML = '<p class="text-gray-500 italic text-sm">No orders completed yet today.</p>';
+                totalRevenueEl.innerText = "0.00 ETB";
                 return;
             }
 
             // Reverse the array to show newest completed orders at the top
             [...completedOrders].reverse().forEach(order => {
                 const summary = order.items.map(i => i.name).join(', ');
+                
+                // Calculate total price for this completed order
+                let completedOrderTotal = 0;
+                order.items.forEach(item => {
+                    completedOrderTotal += item.price;
+                });
+
+                // Add to the daily revenue log sum
+                grandTotalRevenue += completedOrderTotal;
+
                 completedListEl.innerHTML += `
                     <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 flex flex-col gap-1">
                         <div class="flex justify-between items-center">
                             <span class="font-bold text-gray-200">Order #${order.id}</span>
-                            <span class="text-xs text-green-400 font-bold">✓ Served</span>
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-semibold text-yellow-400">${completedOrderTotal.toFixed(2)} ETB</span>
+                                <span class="text-xs text-green-400 font-bold">✓ Served</span>
+                            </div>
                         </div>
                         <p class="text-sm text-gray-400 truncate" title="${summary}">${summary}</p>
                     </div>
                 `;
             });
+
+            // Update the header banner total accumulation display
+            totalRevenueEl.innerText = `${grandTotalRevenue.toFixed(2)} ETB`;
         }
 
         function serveOrder(orderId) {
