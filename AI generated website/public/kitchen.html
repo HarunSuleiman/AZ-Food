@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen - Cook Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include Socket.io Client -->
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-6 font-sans text-gray-800">
+
+    <div class="max-w-4xl mx-auto flex flex-col gap-6">
+        
+        <header class="mb-4 text-center sm:text-left border-b pb-4">
+            <h1 class="text-4xl font-bold text-gray-900">Kitchen Display</h1>
+            <p class="text-gray-500 mt-2">Active tickets map in real-time</p>
+        </header>
+
+        <!-- Active Orders Section -->
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 min-h-[400px]">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-gray-800 flex justify-between items-center">
+                <span>Active Tickets</span>
+                <span id="active-count" class="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">0 Orders</span>
+            </h2>
+            <div id="kitchen-orders" class="space-y-4">
+                <p class="text-gray-400 italic">No active orders</p>
+            </div>
+        </section>
+
+        <!-- Daily Log / History Section -->
+        <section class="bg-gray-900 text-white p-6 rounded-xl shadow-sm">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-100">Completed Orders Log</h2>
+                    <p class="text-sm text-gray-400">Total completed today: <span id="items-served-count" class="font-bold text-green-400 ml-1">0</span></p>
+                </div>
+                <button onclick="clearDailyStats()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors shadow-sm">
+                    Clear Log
+                </button>
+            </div>
+            <div id="completed-orders-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                <p class="text-gray-500 italic text-sm">No orders completed yet today.</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const socket = io(); // Connect to Node.js server
+        
+        let activeKitchenOrders = [];
+        let completedOrders = [];
+
+        const kitchenOrdersEl = document.getElementById('kitchen-orders');
+        const activeCountEl = document.getElementById('active-count');
+        const completedListEl = document.getElementById('completed-orders-list');
+        const itemsServedCountEl = document.getElementById('items-served-count');
+
+        // Listen for the server to sync the state
+        socket.on('sync-orders', (data) => {
+            activeKitchenOrders = data.activeOrders;
+            completedOrders = data.completedOrders;
+            
+            renderKitchen();
+            renderHistory();
+        });
+
+        function renderKitchen() {
+            kitchenOrdersEl.innerHTML = '';
+            activeCountEl.innerText = `${activeKitchenOrders.length} Orders`;
+
+            if (activeKitchenOrders.length === 0) {
+                kitchenOrdersEl.innerHTML = '<p class="text-gray-400 italic text-center py-10">Waiting for new orders...</p>';
+                return;
+            }
+
+            activeKitchenOrders.forEach(order => {
+                // Group duplicate items for the cook
+                const itemCounts = {};
+                order.items.forEach(item => {
+                    itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+                });
+
+                let itemsListHTML = '';
+                for (const [name, count] of Object.entries(itemCounts)) {
+                    itemsListHTML += `<li class="ml-4 list-disc text-gray-800 font-medium">${count}x ${name}</li>`;
+                }
+                
+                kitchenOrdersEl.innerHTML += `
+                    <div class="bg-yellow-50 p-4 rounded-lg shadow-sm border-2 border-yellow-300">
+                        <div class="flex justify-between items-start mb-3 border-b border-yellow-200 pb-3">
+                            <div>
+                                <h4 class="font-bold text-xl text-yellow-900">Order #${order.id}</h4>
+                                <span class="text-sm font-semibold text-yellow-700">${order.items.length} items total</span>
+                            </div>
+                            <button onclick="serveOrder(${order.id})" class="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-lg font-bold transition-colors shadow-sm">
+                                ✓ Serve Ticket
+                            </button>
+                        </div>
+                        <ul class="text-lg space-y-2 mt-3">
+                            ${itemsListHTML}
+                        </ul>
+                    </div>
+                `;
+            });
+        }
+
+        function renderHistory() {
+            completedListEl.innerHTML = '';
+            itemsServedCountEl.innerText = completedOrders.length;
+
+            if (completedOrders.length === 0) {
+                completedListEl.innerHTML = '<p class="text-gray-500 italic text-sm">No orders completed yet today.</p>';
+                return;
+            }
+
+            // Reverse the array to show newest completed orders at the top
+            [...completedOrders].reverse().forEach(order => {
+                const summary = order.items.map(i => i.name).join(', ');
+                completedListEl.innerHTML += `
+                    <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 flex flex-col gap-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-gray-200">Order #${order.id}</span>
+                            <span class="text-xs text-green-400 font-bold">✓ Served</span>
+                        </div>
+                        <p class="text-sm text-gray-400 truncate" title="${summary}">${summary}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function serveOrder(orderId) {
+            // Tell the server to complete the order
+            socket.emit('serve-order', orderId);
+        }
+
+        function clearDailyStats() {
+            if (completedOrders.length === 0) return;
+            if (confirm("Are you sure you want to delete the completed order log?")) {
+                socket.emit('clear-log');
+            }
+        }
+    </script>
+</body>
+</html>

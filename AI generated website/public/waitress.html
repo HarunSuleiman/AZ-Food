@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waitress - Order Entry</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include Socket.io Client -->
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-6 font-sans text-gray-800">
+
+    <div class="max-w-3xl mx-auto">
+        <header class="mb-6 text-center">
+            <h1 class="text-4xl font-bold text-gray-900">Waitress Terminal</h1>
+            <p class="text-gray-500 mt-2">Live Order Entry System</p>
+        </header>
+
+        <!-- Instructions Panel -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg shadow-sm">
+            <h3 class="font-bold text-blue-800">How to process an order:</h3>
+            <ol class="list-decimal ml-5 text-blue-700 text-sm mt-1 space-y-1">
+                <li>Click the <strong>+ Add</strong> button on menu items below to build the customer's cart.</li>
+                <li>Review the items in the "Current Order" panel at the bottom.</li>
+                <li>Click <strong>Send to Kitchen</strong> to instantly transmit the ticket to the cook's screen.</li>
+            </ol>
+        </div>
+
+        <div class="flex flex-col gap-6">
+            <!-- Menu Section -->
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-2xl font-bold mb-4 border-b pb-2">Our Menu</h2>
+                <div id="menu-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6"></div>
+            </section>
+
+            <!-- Cart Section -->
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 sticky bottom-4">
+                <h2 class="text-2xl font-bold mb-4 border-b pb-2">Current Order</h2>
+                <div id="cart-items" class="min-h-[100px] mb-4 space-y-2 max-h-60 overflow-y-auto pr-2">
+                    <p class="text-gray-400 italic">No items selected</p>
+                </div>
+                <div class="flex justify-between items-center border-t pt-4">
+                    <span class="text-xl font-bold">Total: $<span id="cart-total">0.00</span></span>
+                    <button onclick="sendToKitchen()" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm" disabled>
+                        Send to Kitchen
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const socket = io(); // Connect to Node.js server
+        let currentCart = [];
+
+        // Using robust emojis instead of external images
+        const menuItems = [
+            { id: 1, name: "Classic Cheeseburger", price: 12, emoji: "🍔", color: "bg-orange-100" },
+            { id: 2, name: "Grilled Chicken Bowl", price: 10, emoji: "🥗", color: "bg-green-100" },
+            { id: 3, name: "Fresh Iced Tea", price: 3, emoji: "🧊", color: "bg-amber-100" },
+            { id: 4, name: "Craft Lemonade", price: 4, emoji: "🍋", color: "bg-yellow-100" }
+        ];
+
+        const menuContainer = document.getElementById('menu-container');
+        const cartItemsEl = document.getElementById('cart-items');
+        const cartTotalEl = document.getElementById('cart-total');
+        const sendBtnEl = document.getElementById('send-btn');
+
+        // Render the Menu with Emoji Graphics
+        menuItems.forEach(item => {
+            menuContainer.innerHTML += `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                    <div class="${item.color} w-full h-32 flex items-center justify-center text-6xl">
+                        ${item.emoji}
+                    </div>
+                    <div class="p-4 flex flex-col flex-grow">
+                        <h4 class="font-bold text-gray-800 text-lg">${item.name}</h4>
+                        <p class="text-gray-500 mb-4 font-medium">$${item.price.toFixed(2)}</p>
+                        <button onclick="addToCart(${item.id})" class="mt-auto bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors text-sm">
+                            + Add to cart
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        function renderCart() {
+            cartItemsEl.innerHTML = '';
+            let total = 0;
+
+            if (currentCart.length === 0) {
+                cartItemsEl.innerHTML = '<p class="text-gray-400 italic">No items selected</p>';
+                sendBtnEl.disabled = true;
+                cartTotalEl.innerText = "0.00";
+                return;
+            }
+
+            sendBtnEl.disabled = false;
+            currentCart.forEach((item, index) => {
+                total += item.price;
+                cartItemsEl.innerHTML += `
+                    <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
+                        <span class="font-medium text-gray-700">${item.emoji} ${item.name}</span>
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-600 font-semibold">$${item.price.toFixed(2)}</span>
+                            <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none" title="Remove">&times;</button>
+                        </div>
+                    </div>
+                `;
+            });
+            cartTotalEl.innerText = total.toFixed(2);
+        }
+
+        function addToCart(itemId) {
+            const item = menuItems.find(i => i.id === itemId);
+            if (item) {
+                currentCart.push({ ...item });
+                renderCart();
+            }
+        }
+
+        function removeFromCart(index) {
+            currentCart.splice(index, 1);
+            renderCart();
+        }
+
+        function sendToKitchen() {
+            if (currentCart.length === 0) return;
+            // Emit the order to the Socket.io server
+            socket.emit('send-order', currentCart);
+            currentCart = [];
+            renderCart();
+            
+            // Visual feedback
+            const originalText = sendBtnEl.innerText;
+            sendBtnEl.innerText = "✓ Sent!";
+            sendBtnEl.classList.replace("bg-blue-600", "bg-green-500");
+            setTimeout(() => {
+                sendBtnEl.innerText = originalText;
+                sendBtnEl.classList.replace("bg-green-500", "bg-blue-600");
+            }, 2000);
+        }
+
+        renderCart();
+    </script>
+</body>
+</html>
