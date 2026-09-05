@@ -40,7 +40,9 @@
                     <p class="text-gray-400 italic">No items selected</p>
                 </div>
                 <div class="flex justify-between items-center border-t pt-4">
-                    <span class="text-xl font-bold">Total: $<span id="cart-total">0.00</span></span>
+                    <!-- Change from Total: $<span id="cart-total">0.00</span> -->
+<span class="text-xl font-bold">Total: <span id="cart-total">0.00</span> ETB</span>
+
                     <button onclick="sendToKitchen()" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm" disabled>
                         Send to Kitchen
                     </button>
@@ -53,37 +55,44 @@
         const socket = io(); // Connect to Node.js server
         let currentCart = [];
 
-        // Using robust emojis instead of external images
-        const menuItems = [
-            { id: 1, name: "Classic Cheeseburger", price: 12, emoji: "🍔", color: "bg-orange-100" },
-            { id: 2, name: "Grilled Chicken Bowl", price: 10, emoji: "🥗", color: "bg-green-100" },
-            { id: 3, name: "Fresh Iced Tea", price: 3, emoji: "🧊", color: "bg-amber-100" },
-            { id: 4, name: "Craft Lemonade", price: 4, emoji: "🍋", color: "bg-yellow-100" }
-        ];
+    const menuItems = [
+  { id: 1, name: "Special Tibs", price: 450, image: "/images/tibs.png", color: "bg-orange-100" },
+  { id: 2, name: "Beyaynetu Platter", price: 250, image: "/images/beyaynet.png", color: "bg-green-100" },
+  { id: 3, name: "Traditional Buna", price: 40, image: "/images/buna.png", color: "bg-amber-100" },
+  { id: 4, name: "Fresh Juice", price: 120, image: "/images/juice.png", color: "bg-yellow-100" },
+  { id: 5, name: "Special Firfir", price: 200, image: "/images/firfir.png", color: "bg-red-100" },
+  { id: 6, name: "Traditional Kitfo", price: 550, image: "/images/kitfo.png", color: "bg-rose-100" },
+  { id: 7, name: "Delicious Shiro", price: 180, image: "/images/shiro.png", color: "bg-yellow-50" }
+];
+
+
 
         const menuContainer = document.getElementById('menu-container');
         const cartItemsEl = document.getElementById('cart-items');
         const cartTotalEl = document.getElementById('cart-total');
         const sendBtnEl = document.getElementById('send-btn');
 
-        // Render the Menu with Emoji Graphics
-        menuItems.forEach(item => {
-            menuContainer.innerHTML += `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                    <div class="${item.color} w-full h-32 flex items-center justify-center text-6xl">
-                        ${item.emoji}
-                    </div>
-                    <div class="p-4 flex flex-col flex-grow">
-                        <h4 class="font-bold text-gray-800 text-lg">${item.name}</h4>
-                        <p class="text-gray-500 mb-4 font-medium">$${item.price.toFixed(2)}</p>
-                        <button onclick="addToCart(${item.id})" class="mt-auto bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors text-sm">
-                            + Add to cart
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
+        // Render the Menu with Images instead of Emojis
+       // Render the Menu with Birr Pricing
+menuItems.forEach(item => {
+  menuContainer.innerHTML += `
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+      <div class="w-full h-32 flex items-center justify-center overflow-hidden bg-gray-100">
+        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
+      </div>
+      <div class="p-4 flex flex-col flex-grow">
+        <h4 class="font-bold text-gray-800 text-lg">${item.name}</h4>
+        <p class="text-gray-500 mb-4 font-medium">${item.price.toFixed(2)} ETB</p>
+        <button onclick="addToCart(${item.id})" class="mt-auto bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors text-sm">
+          + Add to cart
+        </button>
+      </div>
+    </div>
+  `;
+});
 
+
+        // Render the Cart with Small Image Thumbnails instead of Emojis
         function renderCart() {
             cartItemsEl.innerHTML = '';
             let total = 0;
@@ -97,17 +106,21 @@
 
             sendBtnEl.disabled = false;
             currentCart.forEach((item, index) => {
-                total += item.price;
-                cartItemsEl.innerHTML += `
-                    <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
-                        <span class="font-medium text-gray-700">${item.emoji} ${item.name}</span>
-                        <div class="flex items-center gap-4">
-                            <span class="text-gray-600 font-semibold">$${item.price.toFixed(2)}</span>
-                            <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none" title="Remove">&times;</button>
-                        </div>
-                    </div>
-                `;
-            });
+  total += item.price;
+  cartItemsEl.innerHTML += `
+    <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
+      <span class="font-medium text-gray-700 flex items-center gap-2">
+        <img src="${item.image}" alt="" class="w-6 h-6 rounded-md object-cover">
+        ${item.name}
+      </span>
+      <div class="flex items-center gap-4">
+        <span class="text-gray-600 font-semibold">${item.price.toFixed(2)} ETB</span>
+        <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none" title="Remove">&times;</button>
+      </div>
+    </div>
+  `;
+});
+
             cartTotalEl.innerText = total.toFixed(2);
         }
 
