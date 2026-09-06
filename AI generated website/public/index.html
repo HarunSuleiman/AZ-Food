@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AZ-Food Login</title>
+    <title>AZ-Food System Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center p-6">
-    <div class="max-w-md w-full bg-white p-8 rounded-xl shadow-md border border-gray-200">
+<body class="bg-gray-50 min-h-screen p-6 text-gray-800">
+
+    <!-- ================= LOGIN SECTION ================= -->
+    <div id="login-section" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-200 mt-20">
         <h1 class="text-3xl font-bold text-center text-gray-900 mb-6">AZ-Food Login</h1>
         
         <div id="error-msg" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 text-sm text-center"></div>
@@ -27,12 +29,67 @@
         </form>
     </div>
 
+    <!-- ================= ADMIN DASHBOARD (HIDDEN BY DEFAULT) ================= -->
+    <div id="admin-section" class="hidden max-w-4xl mx-auto">
+        <header class="mb-8 flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Admin Control Panel</h1>
+                <p class="text-gray-500 text-sm">Manage terminal access</p>
+            </div>
+            <button onclick="logOut()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded font-bold transition-colors">
+                Lock System (Log Out)
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Create User Form -->
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2">Create Credentials</h2>
+                <form id="add-user-form" class="space-y-4">
+                    <input type="text" id="new-user" placeholder="New Username" class="w-full p-3 border rounded-lg" required>
+                    <input type="text" id="new-pass" placeholder="New Password" class="w-full p-3 border rounded-lg" required>
+                    <select id="new-role" class="w-full p-3 border rounded-lg bg-gray-50">
+                        <option value="waitress">Waitress Terminal Access</option>
+                        <option value="kitchen">Kitchen Display Access</option>
+                        <option value="admin">Administrator Access</option>
+                    </select>
+                    <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors">
+                        Add to System
+                    </button>
+                </form>
+            </section>
+
+            <!-- User List -->
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2">Authorized Users</h2>
+                <ul id="user-list" class="space-y-3"></ul>
+            </section>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
+        const loginSection = document.getElementById('login-section');
+        const adminSection = document.getElementById('admin-section');
+        const errorMsg = document.getElementById('error-msg');
+
+        // 1. Check if already logged in on page load
+        function checkInitialState() {
+            const role = localStorage.getItem('userRole');
+            if (role === 'admin') {
+                showAdminDashboard();
+            } else if (role === 'waitress') {
+                window.location.href = '/waitress.html';
+            } else if (role === 'kitchen') {
+                window.location.href = '/kitchen.html';
+            }
+        }
+
+        // 2. Handle Login Submission
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('error-msg');
 
             const response = await fetch('/api/login', {
                 method: 'POST',
@@ -43,18 +100,69 @@
             const data = await response.json();
 
             if (data.success) {
-                // Save the permission badge in the browser's memory
                 localStorage.setItem('userRole', data.role);
                 
-                // Route to the correct terminal based on role
-                if (data.role === 'admin') window.location.href = '/admin.html';
-                else if (data.role === 'kitchen') window.location.href = '/kitchen.html';
-                else if (data.role === 'waitress') window.location.href = '/waitress.html';
+                if (data.role === 'admin') {
+                    showAdminDashboard(); // Reveal the hidden HTML
+                } else if (data.role === 'kitchen') {
+                    window.location.href = '/kitchen.html';
+                } else if (data.role === 'waitress') {
+                    window.location.href = '/waitress.html';
+                }
             } else {
                 errorMsg.innerText = data.message;
                 errorMsg.classList.remove('hidden');
             }
         });
+
+        // 3. UI Toggle to show Admin
+        function showAdminDashboard() {
+            loginSection.classList.add('hidden');
+            adminSection.classList.remove('hidden');
+            fetchUsers(); // Load the user list when the dashboard is revealed
+        }
+
+        // 4. Log Out functionality
+        function logOut() {
+            localStorage.removeItem('userRole');
+            adminSection.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+            document.getElementById('login-form').reset();
+            errorMsg.classList.add('hidden');
+        }
+
+        // 5. Admin functions (Fetch and Add users)
+        async function fetchUsers() {
+            const res = await fetch('/api/users');
+            const users = await res.json();
+            const list = document.getElementById('user-list');
+            list.innerHTML = '';
+            users.forEach(u => {
+                list.innerHTML += `<li class="bg-gray-50 p-3 rounded-lg border flex justify-between items-center">
+                    <span class="font-bold text-gray-700">${u.username}</span>
+                    <span class="text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${u.role}</span>
+                </li>`;
+            });
+        }
+
+        document.getElementById('add-user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('new-user').value;
+            const password = document.getElementById('new-pass').value;
+            const role = document.getElementById('new-role').value;
+
+            await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, role })
+            });
+
+            document.getElementById('add-user-form').reset();
+            fetchUsers(); // Refresh the list automatically
+        });
+
+        // Run the check when the page opens
+        checkInitialState();
     </script>
 </body>
 </html>
