@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+                <p class="text-gray-500">Manage system users</p>
+            </div>
+            <a href="/" class="bg-gray-200 text-gray-800 px-4 py-2 rounded font-bold hover:bg-gray-300">Log Out</a>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Create User Form -->
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2">Add New Employee</h2>
+                <form id="add-user-form" class="space-y-4">
+                    <input type="text" id="new-user" placeholder="Username" class="w-full p-2 border rounded" required>
+                    <input type="text" id="new-pass" placeholder="Password" class="w-full p-2 border rounded" required>
+                    <select id="new-role" class="w-full p-2 border rounded">
+                        <option value="waitress">Waitress</option>
+                        <option value="kitchen">Kitchen Cook</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700">Create Account</button>
+                </form>
+            </section>
+
+            <!-- User List -->
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2">Active Accounts</h2>
+                <ul id="user-list" class="space-y-2"></ul>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        async function fetchUsers() {
+            const res = await fetch('/api/users');
+            const users = await res.json();
+            const list = document.getElementById('user-list');
+            list.innerHTML = '';
+            users.forEach(u => {
+                list.innerHTML += `<li class="bg-gray-100 p-3 rounded border flex justify-between">
+                    <span class="font-bold">${u.username}</span>
+                    <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">${u.role}</span>
+                </li>`;
+            });
+        }
+
+        document.getElementById('add-user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('new-user').value;
+            const password = document.getElementById('new-pass').value;
+            const role = document.getElementById('new-role').value;
+
+            await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, role })
+            });
+
+            document.getElementById('add-user-form').reset();
+            fetchUsers(); // Refresh the list
+        });
+
+        fetchUsers();
+    </script>
+</body>
+</html>
