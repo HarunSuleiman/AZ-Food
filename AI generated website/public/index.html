@@ -29,15 +29,15 @@
         </form>
     </div>
 
-    <!-- ================= ADMIN DASHBOARD (HIDDEN BY DEFAULT) ================= -->
+    <!-- ================= ADMIN DASHBOARD ================= -->
     <div id="admin-section" class="hidden max-w-4xl mx-auto">
         <header class="mb-8 flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Admin Control Panel</h1>
-                <p class="text-gray-500 text-sm">Manage terminal access</p>
+                <p class="text-gray-500 text-sm">Manage terminal access & system data</p>
             </div>
-            <button onclick="logOut()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded font-bold transition-colors">
-                Lock System (Log Out)
+            <button onclick="logOut()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded font-bold transition-colors">
+                Log Out
             </button>
         </header>
 
@@ -64,28 +64,35 @@
                 <h2 class="text-xl font-bold mb-4 border-b pb-2">Authorized Users</h2>
                 <ul id="user-list" class="space-y-3"></ul>
             </section>
+
+            <!-- System Controls -->
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 col-span-1 md:col-span-2">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2">System Controls</h2>
+                <div class="flex justify-between items-center bg-red-50 p-4 rounded-lg border border-red-200">
+                    <div>
+                        <h3 class="font-bold text-red-900">Clear Daily Order Log</h3>
+                        <p class="text-sm text-red-700">Permanently wipe all completed tickets and revenue from the system.</p>
+                    </div>
+                    <button onclick="adminClearLog()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                        Clear Log Now
+                    </button>
+                </div>
+            </section>
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
         const loginSection = document.getElementById('login-section');
         const adminSection = document.getElementById('admin-section');
         const errorMsg = document.getElementById('error-msg');
 
-        // 1. Check if already logged in on page load
         function checkInitialState() {
             const role = localStorage.getItem('userRole');
-            if (role === 'admin') {
-                showAdminDashboard();
-            } else if (role === 'waitress') {
-                window.location.href = '/waitress.html';
-            } else if (role === 'kitchen') {
-                window.location.href = '/kitchen.html';
-            }
+            if (role === 'admin') showAdminDashboard();
+            else if (role === 'waitress') window.location.href = '/waitress.html';
+            else if (role === 'kitchen') window.location.href = '/kitchen.html';
         }
 
-        // 2. Handle Login Submission
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;
@@ -96,33 +103,25 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
-
             const data = await response.json();
 
             if (data.success) {
                 localStorage.setItem('userRole', data.role);
-                
-                if (data.role === 'admin') {
-                    showAdminDashboard(); // Reveal the hidden HTML
-                } else if (data.role === 'kitchen') {
-                    window.location.href = '/kitchen.html';
-                } else if (data.role === 'waitress') {
-                    window.location.href = '/waitress.html';
-                }
+                if (data.role === 'admin') showAdminDashboard();
+                else if (data.role === 'kitchen') window.location.href = '/kitchen.html';
+                else if (data.role === 'waitress') window.location.href = '/waitress.html';
             } else {
                 errorMsg.innerText = data.message;
                 errorMsg.classList.remove('hidden');
             }
         });
 
-        // 3. UI Toggle to show Admin
         function showAdminDashboard() {
             loginSection.classList.add('hidden');
             adminSection.classList.remove('hidden');
-            fetchUsers(); // Load the user list when the dashboard is revealed
+            fetchUsers();
         }
 
-        // 4. Log Out functionality
         function logOut() {
             localStorage.removeItem('userRole');
             adminSection.classList.add('hidden');
@@ -131,7 +130,6 @@
             errorMsg.classList.add('hidden');
         }
 
-        // 5. Admin functions (Fetch and Add users)
         async function fetchUsers() {
             const res = await fetch('/api/users');
             const users = await res.json();
@@ -158,10 +156,16 @@
             });
 
             document.getElementById('add-user-form').reset();
-            fetchUsers(); // Refresh the list automatically
+            fetchUsers(); 
         });
 
-        // Run the check when the page opens
+        async function adminClearLog() {
+            if (confirm("Are you sure you want to permanently delete the completed order log?")) {
+                await fetch('/api/clear-log', { method: 'POST' });
+                alert("Daily log has been cleared.");
+            }
+        }
+
         checkInitialState();
     </script>
 </body>

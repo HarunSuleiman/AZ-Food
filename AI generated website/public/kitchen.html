@@ -5,25 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kitchen - Cook Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Include Socket.io Client -->
     <script src="/socket.io/socket.io.js"></script>
-
+    
+    <!-- Security Check -->
     <script>
-    // Security Check
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'kitchen' && userRole !== 'admin') {
-        alert("Permission denied. You must be logged in by an Admin.");
-        window.location.href = '/index.html'; 
-    }
-</script>
+        const userRole = localStorage.getItem('userRole');
+        if (userRole !== 'kitchen' && userRole !== 'admin') {
+            alert("Permission denied. You must log in.");
+            window.location.href = '/index.html'; 
+        }
+    </script>
 </head>
 <body class="bg-gray-50 min-h-screen p-6 font-sans text-gray-800">
 
     <div class="max-w-4xl mx-auto flex flex-col gap-6">
         
-        <header class="mb-4 text-center sm:text-left border-b pb-4">
-            <h1 class="text-4xl font-bold text-gray-900">Kitchen Display</h1>
-            <p class="text-gray-500 mt-2">Active tickets map in real-time</p>
+        <header class="mb-4 flex flex-col sm:flex-row justify-between items-center border-b pb-4">
+            <div class="text-center sm:text-left">
+                <h1 class="text-4xl font-bold text-gray-900">Kitchen Display</h1>
+                <p class="text-gray-500 mt-1">Active tickets map in real-time</p>
+            </div>
+            <button onclick="logOut()" class="mt-4 sm:mt-0 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded font-bold transition-colors">
+                Log Out
+            </button>
         </header>
 
         <!-- Active Orders Section -->
@@ -39,16 +43,10 @@
 
         <!-- Daily Log / History Section -->
         <section class="bg-gray-900 text-white p-6 rounded-xl shadow-sm">
-            <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-100">Completed Orders Log</h2>
-                    <p class="text-sm text-gray-400">Total completed today: <span id="items-served-count" class="font-bold text-green-400 ml-1">0</span></p>
-                    <!-- Total Revenue Counter -->
-                    <p class="text-sm text-gray-400 mt-1">Total Sales Today: <span id="total-revenue" class="font-bold text-yellow-400 ml-1">0.00 ETB</span></p>
-                </div>
-                <button onclick="clearDailyStats()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors shadow-sm">
-                    Clear Log
-                </button>
+            <div class="mb-4 border-b border-gray-700 pb-4">
+                <h2 class="text-xl font-bold text-gray-100">Completed Orders Log</h2>
+                <p class="text-sm text-gray-400">Total completed today: <span id="items-served-count" class="font-bold text-green-400 ml-1">0</span></p>
+                <p class="text-sm text-gray-400 mt-1">Total Sales Today: <span id="total-revenue" class="font-bold text-yellow-400 ml-1">0.00 ETB</span></p>
             </div>
             <div id="completed-orders-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
                 <p class="text-gray-500 italic text-sm">No orders completed yet today.</p>
@@ -57,7 +55,7 @@
     </div>
 
     <script>
-        const socket = io(); // Connect to Node.js server
+        const socket = io(); 
         
         let activeKitchenOrders = [];
         let completedOrders = [];
@@ -68,7 +66,11 @@
         const itemsServedCountEl = document.getElementById('items-served-count');
         const totalRevenueEl = document.getElementById('total-revenue');
 
-        // Listen for the server to sync the state
+        function logOut() {
+            localStorage.removeItem('userRole');
+            window.location.href = '/index.html';
+        }
+
         socket.on('sync-orders', (data) => {
             activeKitchenOrders = data.activeOrders;
             completedOrders = data.completedOrders;
@@ -87,13 +89,12 @@
             }
 
             activeKitchenOrders.forEach(order => {
-                // Group duplicate items for the cook
                 const itemCounts = {};
                 let orderTotal = 0;
 
                 order.items.forEach(item => {
                     itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
-                    orderTotal += item.price; // Calculate individual ticket total
+                    orderTotal += item.price; 
                 });
 
                 let itemsListHTML = '';
@@ -135,17 +136,14 @@
                 return;
             }
 
-            // Reverse the array to show newest completed orders at the top
             [...completedOrders].reverse().forEach(order => {
                 const summary = order.items.map(i => i.name).join(', ');
                 
-                // Calculate total price for this completed order
                 let completedOrderTotal = 0;
                 order.items.forEach(item => {
                     completedOrderTotal += item.price;
                 });
 
-                // Add to the daily revenue log sum
                 grandTotalRevenue += completedOrderTotal;
 
                 completedListEl.innerHTML += `
@@ -162,20 +160,11 @@
                 `;
             });
 
-            // Update the header banner total accumulation display
             totalRevenueEl.innerText = `${grandTotalRevenue.toFixed(2)} ETB`;
         }
 
         function serveOrder(orderId) {
-            // Tell the server to complete the order
             socket.emit('serve-order', orderId);
-        }
-
-        function clearDailyStats() {
-            if (completedOrders.length === 0) return;
-            if (confirm("Are you sure you want to delete the completed order log?")) {
-                socket.emit('clear-log');
-            }
         }
     </script>
 </body>

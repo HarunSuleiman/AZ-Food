@@ -5,42 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waitress - Order Entry</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Include Socket.io Client -->
     <script src="/socket.io/socket.io.js"></script>
-
+    
+    <!-- Security Check -->
     <script>
-    // Security Check
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'waitress' && userRole !== 'admin') {
-        alert("Permission denied. You must be logged in by an Admin.");
-        window.location.href = '/index.html'; 
-    }
-</script>
+        const userRole = localStorage.getItem('userRole');
+        if (userRole !== 'waitress' && userRole !== 'admin') {
+            alert("Permission denied. You must log in.");
+            window.location.href = '/index.html'; 
+        }
+    </script>
 </head>
-
 <body class="bg-gray-50 min-h-screen p-6 font-sans text-gray-800">
 
     <div class="max-w-3xl mx-auto">
-        <header class="mb-6 text-center">
-            <h1 class="text-4xl font-bold text-gray-900">Waitress Terminal</h1>
-            <p class="text-gray-500 mt-2">Live Order Entry System</p>
+        <header class="mb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-bold text-gray-900">Waitress Terminal</h1>
+                <p class="text-gray-500 mt-1">Live Order Entry System</p>
+            </div>
+            <button onclick="logOut()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded font-bold transition-colors">
+                Log Out
+            </button>
         </header>
-
-        <!-- Instructions Panel -->
-        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg shadow-sm">
-            <h3 class="font-bold text-blue-800">How to process an order:</h3>
-            <ol class="list-decimal ml-5 text-blue-700 text-sm mt-1 space-y-1">
-                <li>Click the <strong>+ Add</strong> button on menu items below to build the customer's cart.</li>
-                <li>Review the items in the "Current Order" panel at the bottom.</li>
-                <li>Click <strong>Send to Kitchen</strong> to instantly transmit the ticket to the cook's screen.</li>
-            </ol>
-        </div>
 
         <div class="flex flex-col gap-6">
             <!-- Menu Section -->
             <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h2 class="text-2xl font-bold mb-4 border-b pb-2">Our Menu</h2>
-                <div id="menu-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6"></div>
+                <h2 class="text-2xl font-bold mb-2 border-b pb-2">Our Menu</h2>
+                
+                <!-- Food Category -->
+                <h3 class="text-xl font-bold text-gray-700 mt-4 mb-3">Food</h3>
+                <div id="food-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6"></div>
+
+                <!-- Drinks Category -->
+                <h3 class="text-xl font-bold text-gray-700 mt-4 mb-3">Drinks</h3>
+                <div id="drink-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
             </section>
 
             <!-- Cart Section -->
@@ -50,9 +50,7 @@
                     <p class="text-gray-400 italic">No items selected</p>
                 </div>
                 <div class="flex justify-between items-center border-t pt-4">
-                    <!-- Change from Total: $<span id="cart-total">0.00</span> -->
-<span class="text-xl font-bold">Total: <span id="cart-total">0.00</span> ETB</span>
-
+                    <span class="text-xl font-bold">Total: <span id="cart-total">0.00</span> ETB</span>
                     <button onclick="sendToKitchen()" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm" disabled>
                         Send to Kitchen
                     </button>
@@ -62,47 +60,53 @@
     </div>
 
     <script>
-        const socket = io(); // Connect to Node.js server
+        const socket = io(); 
         let currentCart = [];
 
-    const menuItems = [
-  { id: 1, name: "Special Tibs", price: 450, image: "/images/tibs.png", color: "bg-orange-100" },
-  { id: 2, name: "Beyaynetu Platter", price: 250, image: "/images/beyaynet.png", color: "bg-green-100" },
-  { id: 3, name: "Traditional Buna", price: 40, image: "/images/buna.png", color: "bg-amber-100" },
-  { id: 4, name: "Fresh Juice", price: 120, image: "/images/juice.png", color: "bg-yellow-100" },
-  { id: 5, name: "Special Firfir", price: 200, image: "/images/firfir.png", color: "bg-red-100" },
-  { id: 6, name: "Traditional Kitfo", price: 550, image: "/images/kitfo.png", color: "bg-rose-100" },
-  { id: 7, name: "Delicious Shiro", price: 180, image: "/images/shiro.png", color: "bg-yellow-50" }
-];
+        function logOut() {
+            localStorage.removeItem('userRole');
+            window.location.href = '/index.html';
+        }
 
+        const menuItems = [
+            { id: 1, name: "Special Tibs", price: 450, category: "food", image: "/images/tibs.png" },
+            { id: 2, name: "Beyaynetu Platter", price: 250, category: "food", image: "/images/beyaynet.png" },
+            { id: 3, name: "Traditional Buna", price: 40, category: "drink", image: "/images/buna.png" },
+            { id: 4, name: "Fresh Juice", price: 120, category: "drink", image: "/images/juice.png" },
+            { id: 5, name: "Special Firfir", price: 200, category: "food", image: "/images/firfir.png" },
+            { id: 6, name: "Traditional Kitfo", price: 550, category: "food", image: "/images/kitfo.png" },
+            { id: 7, name: "Delicious Shiro", price: 180, category: "food", image: "/images/shiro.png" }
+        ];
 
-
-        const menuContainer = document.getElementById('menu-container');
+        const foodContainer = document.getElementById('food-container');
+        const drinkContainer = document.getElementById('drink-container');
         const cartItemsEl = document.getElementById('cart-items');
         const cartTotalEl = document.getElementById('cart-total');
         const sendBtnEl = document.getElementById('send-btn');
 
-        // Render the Menu with Images instead of Emojis
-       // Render the Menu with Birr Pricing
-menuItems.forEach(item => {
-  menuContainer.innerHTML += `
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-      <div class="w-full h-32 flex items-center justify-center overflow-hidden bg-gray-100">
-        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
-      </div>
-      <div class="p-4 flex flex-col flex-grow">
-        <h4 class="font-bold text-gray-800 text-lg">${item.name}</h4>
-        <p class="text-gray-500 mb-4 font-medium">${item.price.toFixed(2)} ETB</p>
-        <button onclick="addToCart(${item.id})" class="mt-auto bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors text-sm">
-          + Add to cart
-        </button>
-      </div>
-    </div>
-  `;
-});
+        menuItems.forEach(item => {
+            const itemHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                    <div class="w-full h-32 flex items-center justify-center overflow-hidden bg-gray-100">
+                        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-4 flex flex-col flex-grow">
+                        <h4 class="font-bold text-gray-800 text-lg">${item.name}</h4>
+                        <p class="text-gray-500 mb-4 font-medium">${item.price.toFixed(2)} ETB</p>
+                        <button onclick="addToCart(${item.id})" class="mt-auto bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors text-sm">
+                            + Add to cart
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            if (item.category === "food") {
+                foodContainer.innerHTML += itemHTML;
+            } else {
+                drinkContainer.innerHTML += itemHTML;
+            }
+        });
 
-
-        // Render the Cart with Small Image Thumbnails instead of Emojis
         function renderCart() {
             cartItemsEl.innerHTML = '';
             let total = 0;
@@ -116,21 +120,20 @@ menuItems.forEach(item => {
 
             sendBtnEl.disabled = false;
             currentCart.forEach((item, index) => {
-  total += item.price;
-  cartItemsEl.innerHTML += `
-    <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
-      <span class="font-medium text-gray-700 flex items-center gap-2">
-        <img src="${item.image}" alt="" class="w-6 h-6 rounded-md object-cover">
-        ${item.name}
-      </span>
-      <div class="flex items-center gap-4">
-        <span class="text-gray-600 font-semibold">${item.price.toFixed(2)} ETB</span>
-        <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none" title="Remove">&times;</button>
-      </div>
-    </div>
-  `;
-});
-
+                total += item.price;
+                cartItemsEl.innerHTML += `
+                    <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
+                        <span class="font-medium text-gray-700 flex items-center gap-2">
+                            <img src="${item.image}" alt="" class="w-6 h-6 rounded-md object-cover">
+                            ${item.name}
+                        </span>
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-600 font-semibold">${item.price.toFixed(2)} ETB</span>
+                            <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none" title="Remove">&times;</button>
+                        </div>
+                    </div>
+                `;
+            });
             cartTotalEl.innerText = total.toFixed(2);
         }
 
@@ -149,12 +152,10 @@ menuItems.forEach(item => {
 
         function sendToKitchen() {
             if (currentCart.length === 0) return;
-            // Emit the order to the Socket.io server
             socket.emit('send-order', currentCart);
             currentCart = [];
             renderCart();
             
-            // Visual feedback
             const originalText = sendBtnEl.innerText;
             sendBtnEl.innerText = "✓ Sent!";
             sendBtnEl.classList.replace("bg-blue-600", "bg-green-500");
