@@ -3,13 +3,15 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
-// Add this near the top with your other app.use statements
-app.use(express.json()); 
+
+
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+  
 
+app.use(express.json()); 
 // Serve the static HTML files from the "public" folder
 app.use(express.static(path.join(__dirname, "public")));
 
