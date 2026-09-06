@@ -7,7 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Include Socket.io Client -->
     <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+    // Security Check
+    const userRole = localStorage.getItem('userRole');
+    if (userRole !== 'waitress' && userRole !== 'admin') {
+        alert("Permission denied. You must be logged in by an Admin.");
+        window.location.href = '/index.html'; 
+    }
+</script>
 </head>
+
 <body class="bg-gray-50 min-h-screen p-6 font-sans text-gray-800">
 
     <div class="max-w-3xl mx-auto">
