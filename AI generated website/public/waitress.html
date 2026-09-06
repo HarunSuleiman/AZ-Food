@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     
-    <!-- Security Check -->
     <script>
         const userRole = localStorage.getItem('userRole');
         if (userRole !== 'waitress' && userRole !== 'admin') {
@@ -15,10 +14,29 @@
             window.location.href = '/index.html'; 
         }
     </script>
+    
+    <style>
+        /* This hides everything EXCEPT the receipt when printing */
+        @media print {
+            body > div:not(#print-area) { display: none !important; }
+            body { background: white; margin: 0; padding: 0; }
+            #print-area { 
+                display: block !important; 
+                width: 80mm; /* Standard thermal printer width */
+                font-family: 'Courier New', Courier, monospace; 
+                color: black;
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-6 font-sans text-gray-800">
 
-    <div class="max-w-6xl mx-auto">
+    <!-- HIDDEN THERMAL RECEIPT AREA -->
+    <div id="print-area" class="hidden"></div>
+
+    <!-- MAIN APP UI -->
+    <div class="max-w-6xl mx-auto" id="main-ui">
         <header class="mb-6 flex flex-col sm:flex-row justify-between items-center border-b pb-4">
             <div>
                 <h1 class="text-4xl font-bold text-gray-900">Waitress Terminal</h1>
@@ -30,28 +48,28 @@
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            <!-- ================= LEFT: MENU SECTION ================= -->
+            <!-- LEFT: MENU SECTION -->
             <div class="lg:col-span-2 flex flex-col gap-6">
                 <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <h2 class="text-2xl font-bold mb-2 border-b pb-2">Our Menu</h2>
-                    
-                    <!-- Food Category -->
                     <h3 class="text-xl font-bold text-gray-700 mt-4 mb-3">Food</h3>
                     <div id="food-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6"></div>
-
-                    <!-- Drinks Category -->
                     <h3 class="text-xl font-bold text-gray-700 mt-4 mb-3">Drinks</h3>
                     <div id="drink-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
                 </section>
             </div>
 
-            <!-- ================= RIGHT: CART & STATUS SECTION ================= -->
+            <!-- RIGHT: CART & STATUS SECTION -->
             <div class="lg:col-span-1 flex flex-col gap-6">
-                
-                <!-- Current Cart -->
                 <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <h2 class="text-2xl font-bold mb-4 border-b pb-2">New Order (Draft)</h2>
+                    
+                    <!-- Table Number Input -->
+                    <div class="mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200 flex items-center justify-between">
+                        <label for="table-input" class="font-bold text-gray-700">Table Number:</label>
+                        <input type="number" id="table-input" class="w-20 p-2 border border-gray-300 rounded-lg text-center font-bold" min="1" max="50" placeholder="e.g. 5">
+                    </div>
+
                     <div id="cart-items" class="min-h-[100px] mb-4 space-y-2 max-h-60 overflow-y-auto pr-2">
                         <p class="text-gray-400 italic">No items selected</p>
                     </div>
@@ -63,33 +81,31 @@
                     </button>
                 </section>
 
-                <!-- Sent Orders Status (Real-time tracking) -->
+                <!-- Sent Orders Status -->
                 <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <h2 class="text-2xl font-bold mb-4 border-b pb-2">Ticket Status</h2>
                     <div id="sent-orders-list" class="space-y-3 max-h-80 overflow-y-auto pr-2">
                         <p class="text-gray-400 italic">No active tickets.</p>
                     </div>
                 </section>
-
             </div>
         </div>
     </div>
 
     <script>
         const socket = io(); 
-        
-        // State variables
         let currentCart = [];
         let activeTickets = [];
         let completedTickets = [];
 
-        // DOM Elements
         const foodContainer = document.getElementById('food-container');
         const drinkContainer = document.getElementById('drink-container');
         const cartItemsEl = document.getElementById('cart-items');
         const cartTotalEl = document.getElementById('cart-total');
         const sendBtnEl = document.getElementById('send-btn');
         const sentOrdersListEl = document.getElementById('sent-orders-list');
+        const tableInputEl = document.getElementById('table-input');
+        const printAreaEl = document.getElementById('print-area');
 
         function logOut() {
             localStorage.removeItem('userRole');
@@ -106,7 +122,6 @@
             { id: 7, name: "Delicious Shiro", price: 180, category: "food", image: "/images/shiro.png" }
         ];
 
-        // 1. Initial Menu Render
         menuItems.forEach(item => {
             const itemHTML = `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
@@ -122,15 +137,10 @@
                     </div>
                 </div>
             `;
-            
-            if (item.category === "food") {
-                foodContainer.innerHTML += itemHTML;
-            } else {
-                drinkContainer.innerHTML += itemHTML;
-            }
+            if (item.category === "food") foodContainer.innerHTML += itemHTML;
+            else drinkContainer.innerHTML += itemHTML;
         });
 
-        // 2. Cart Logic
         function renderCart() {
             cartItemsEl.innerHTML = '';
             let total = 0;
@@ -148,12 +158,11 @@
                 cartItemsEl.innerHTML += `
                     <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
                         <span class="font-medium text-gray-700 flex items-center gap-2 truncate">
-                            <img src="${item.image}" alt="" class="w-6 h-6 rounded-md object-cover hidden sm:block">
                             ${item.name}
                         </span>
                         <div class="flex items-center gap-4 pl-2">
                             <span class="text-gray-600 font-semibold whitespace-nowrap">${item.price.toFixed(2)} ETB</span>
-                            <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none" title="Remove">&times;</button>
+                            <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none">&times;</button>
                         </div>
                     </div>
                 `;
@@ -175,9 +184,15 @@
         }
 
         function sendToKitchen() {
+            const tableNum = tableInputEl.value;
+            if (!tableNum) return alert("Please enter a Table Number before sending the order.");
             if (currentCart.length === 0) return;
-            socket.emit('send-order', currentCart);
+
+            // Send both items and table number
+            socket.emit('send-order', { items: currentCart, table: tableNum });
+            
             currentCart = [];
+            tableInputEl.value = ''; // Reset table
             renderCart();
             
             const originalText = sendBtnEl.innerText;
@@ -189,7 +204,6 @@
             }, 2000);
         }
 
-        // 3. Real-Time Ticket Status Logic
         socket.on('sync-orders', (data) => {
             activeTickets = data.activeOrders;
             completedTickets = data.completedOrders;
@@ -204,13 +218,13 @@
                 return;
             }
 
-            // Show active tickets that are cooking
+            // Render Active Tickets
             activeTickets.forEach(order => {
                 const summary = order.items.map(i => i.name).join(', ');
                 sentOrdersListEl.innerHTML += `
                     <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200 flex flex-col gap-1">
                         <div class="flex justify-between items-center">
-                            <span class="font-bold text-yellow-900">Order #${order.id}</span>
+                            <span class="font-bold text-yellow-900">Order #${order.id} (Table ${order.table})</span>
                             <span class="text-xs text-yellow-700 font-bold flex items-center gap-1">
                                 <span class="animate-pulse">🔥</span> Cooking...
                             </span>
@@ -220,20 +234,70 @@
                 `;
             });
 
-            // Show the last 5 completed tickets so the waitress knows what to pick up
+            // Render Completed Tickets with Print Button
             const recentCompleted = [...completedTickets].reverse().slice(0, 5);
             recentCompleted.forEach(order => {
                 const summary = order.items.map(i => i.name).join(', ');
                 sentOrdersListEl.innerHTML += `
                     <div class="bg-green-50 p-3 rounded-lg border border-green-200 flex flex-col gap-1">
                         <div class="flex justify-between items-center">
-                            <span class="font-bold text-green-900">Order #${order.id}</span>
-                            <span class="text-xs text-green-700 font-bold">✓ Ready/Served</span>
+                            <span class="font-bold text-green-900">Order #${order.id} (Table ${order.table})</span>
+                            <button onclick="printReceipt(${order.id})" class="bg-gray-800 hover:bg-black text-white text-xs px-2 py-1 rounded shadow-sm flex items-center gap-1">
+                                🖨️ Print
+                            </button>
                         </div>
                         <p class="text-sm text-green-800 truncate" title="${summary}">${summary}</p>
                     </div>
                 `;
             });
+        }
+
+        function printReceipt(orderId) {
+            const order = completedTickets.find(o => o.id === orderId);
+            if (!order) return;
+
+            let total = 0;
+            const itemCounts = {};
+            order.items.forEach(item => {
+                total += item.price;
+                itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+            });
+
+            let itemsHTML = '';
+            for (const [name, count] of Object.entries(itemCounts)) {
+                itemsHTML += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>${count}x ${name}</span>
+                              </div>`;
+            }
+
+            printAreaEl.innerHTML = `
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <h2 style="margin: 0; font-size: 24px;">AZ-Food</h2>
+                    <p style="margin: 2px 0;">Official Receipt</p>
+                </div>
+                <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
+                    <p style="margin: 2px 0;">Order #: ${order.id}</p>
+                    <p style="margin: 2px 0;">Table #: ${order.table}</p>
+                    <p style="margin: 2px 0;">Time: ${order.timestamp}</p>
+                </div>
+                <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
+                    ${itemsHTML}
+                </div>
+                <div style="text-align: right; font-weight: bold; font-size: 18px;">
+                    TOTAL: ${total.toFixed(2)} ETB
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <p>Thank you for dining with us!</p>
+                </div>
+            `;
+
+            printAreaEl.classList.remove('hidden');
+            window.print();
+            
+            // Re-hide the print area after the print dialog closes
+            setTimeout(() => {
+                printAreaEl.classList.add('hidden');
+            }, 100);
         }
 
         renderCart();
