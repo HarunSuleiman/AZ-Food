@@ -16,49 +16,47 @@ let activeOrders = [];
 let completedOrders = [];
 let orderIdCounter = 101;
 
-// Login API
+// Login & User APIs
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
   const user = users.find(
     (u) => u.username === username && u.password === password,
   );
-
-  if (user) {
-    res.json({ success: true, role: user.role });
-  } else {
-    res.status(401).json({ success: false, message: "Invalid credentials" });
-  }
+  if (user) res.json({ success: true, role: user.role });
+  else res.status(401).json({ success: false, message: "Invalid credentials" });
 });
 
-// Admin API: Get all users
-app.get("/api/users", (req, res) => {
-  res.json(users);
-});
+app.get("/api/users", (req, res) => res.json(users));
 
-// Admin API: Create a new user
 app.post("/api/users", (req, res) => {
   const { username, password, role } = req.body;
   users.push({ username, password, role });
   res.json({ success: true, message: "User added" });
 });
 
+// Admin API: Get completed orders for CSV Export
+app.get("/api/orders/history", (req, res) => {
+  res.json(completedOrders);
+});
+
 // Admin API: Clear the completed orders log
 app.post("/api/clear-log", (req, res) => {
   completedOrders = [];
-  io.emit("sync-orders", { activeOrders, completedOrders }); // Tell all screens to clear
+  io.emit("sync-orders", { activeOrders, completedOrders });
   res.json({ success: true });
 });
 
 // WebSocket Connection Logic
 io.on("connection", (socket) => {
   console.log(`New device connected: ${socket.id}`);
-
   socket.emit("sync-orders", { activeOrders, completedOrders });
 
-  socket.on("send-order", (cartItems) => {
+  // UPDATED: Now receives an object with both items and the table number
+  socket.on("send-order", (orderData) => {
     const newOrder = {
       id: orderIdCounter++,
-      items: cartItems,
+      table: orderData.table,
+      items: orderData.items,
       timestamp: new Date().toLocaleTimeString(),
     };
     activeOrders.push(newOrder);
