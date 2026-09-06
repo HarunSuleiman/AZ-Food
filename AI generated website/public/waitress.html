@@ -18,50 +18,78 @@
 </head>
 <body class="bg-gray-50 min-h-screen p-6 font-sans text-gray-800">
 
-    <div class="max-w-3xl mx-auto">
-        <header class="mb-6 flex justify-between items-center">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-6 flex flex-col sm:flex-row justify-between items-center border-b pb-4">
             <div>
                 <h1 class="text-4xl font-bold text-gray-900">Waitress Terminal</h1>
-                <p class="text-gray-500 mt-1">Live Order Entry System</p>
+                <p class="text-gray-500 mt-1">Live Order Entry & Status System</p>
             </div>
-            <button onclick="logOut()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded font-bold transition-colors">
+            <button onclick="logOut()" class="mt-4 sm:mt-0 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded font-bold transition-colors">
                 Log Out
             </button>
         </header>
 
-        <div class="flex flex-col gap-6">
-            <!-- Menu Section -->
-            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h2 class="text-2xl font-bold mb-2 border-b pb-2">Our Menu</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- ================= LEFT: MENU SECTION ================= -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold mb-2 border-b pb-2">Our Menu</h2>
+                    
+                    <!-- Food Category -->
+                    <h3 class="text-xl font-bold text-gray-700 mt-4 mb-3">Food</h3>
+                    <div id="food-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6"></div>
+
+                    <!-- Drinks Category -->
+                    <h3 class="text-xl font-bold text-gray-700 mt-4 mb-3">Drinks</h3>
+                    <div id="drink-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+                </section>
+            </div>
+
+            <!-- ================= RIGHT: CART & STATUS SECTION ================= -->
+            <div class="lg:col-span-1 flex flex-col gap-6">
                 
-                <!-- Food Category -->
-                <h3 class="text-xl font-bold text-gray-700 mt-4 mb-3">Food</h3>
-                <div id="food-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6"></div>
-
-                <!-- Drinks Category -->
-                <h3 class="text-xl font-bold text-gray-700 mt-4 mb-3">Drinks</h3>
-                <div id="drink-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
-            </section>
-
-            <!-- Cart Section -->
-            <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 sticky bottom-4">
-                <h2 class="text-2xl font-bold mb-4 border-b pb-2">Current Order</h2>
-                <div id="cart-items" class="min-h-[100px] mb-4 space-y-2 max-h-60 overflow-y-auto pr-2">
-                    <p class="text-gray-400 italic">No items selected</p>
-                </div>
-                <div class="flex justify-between items-center border-t pt-4">
-                    <span class="text-xl font-bold">Total: <span id="cart-total">0.00</span> ETB</span>
-                    <button onclick="sendToKitchen()" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm" disabled>
-                        Send to Kitchen
+                <!-- Current Cart -->
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-2">New Order (Draft)</h2>
+                    <div id="cart-items" class="min-h-[100px] mb-4 space-y-2 max-h-60 overflow-y-auto pr-2">
+                        <p class="text-gray-400 italic">No items selected</p>
+                    </div>
+                    <div class="flex justify-between items-center border-t pt-4 mb-4">
+                        <span class="text-xl font-bold">Total: <span id="cart-total">0.00</span> ETB</span>
+                    </div>
+                    <button onclick="sendToKitchen()" id="send-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm" disabled>
+                        Send Ticket to Kitchen
                     </button>
-                </div>
-            </section>
+                </section>
+
+                <!-- Sent Orders Status (Real-time tracking) -->
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-2">Ticket Status</h2>
+                    <div id="sent-orders-list" class="space-y-3 max-h-80 overflow-y-auto pr-2">
+                        <p class="text-gray-400 italic">No active tickets.</p>
+                    </div>
+                </section>
+
+            </div>
         </div>
     </div>
 
     <script>
         const socket = io(); 
+        
+        // State variables
         let currentCart = [];
+        let activeTickets = [];
+        let completedTickets = [];
+
+        // DOM Elements
+        const foodContainer = document.getElementById('food-container');
+        const drinkContainer = document.getElementById('drink-container');
+        const cartItemsEl = document.getElementById('cart-items');
+        const cartTotalEl = document.getElementById('cart-total');
+        const sendBtnEl = document.getElementById('send-btn');
+        const sentOrdersListEl = document.getElementById('sent-orders-list');
 
         function logOut() {
             localStorage.removeItem('userRole');
@@ -78,12 +106,7 @@
             { id: 7, name: "Delicious Shiro", price: 180, category: "food", image: "/images/shiro.png" }
         ];
 
-        const foodContainer = document.getElementById('food-container');
-        const drinkContainer = document.getElementById('drink-container');
-        const cartItemsEl = document.getElementById('cart-items');
-        const cartTotalEl = document.getElementById('cart-total');
-        const sendBtnEl = document.getElementById('send-btn');
-
+        // 1. Initial Menu Render
         menuItems.forEach(item => {
             const itemHTML = `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
@@ -107,6 +130,7 @@
             }
         });
 
+        // 2. Cart Logic
         function renderCart() {
             cartItemsEl.innerHTML = '';
             let total = 0;
@@ -123,12 +147,12 @@
                 total += item.price;
                 cartItemsEl.innerHTML += `
                     <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
-                        <span class="font-medium text-gray-700 flex items-center gap-2">
-                            <img src="${item.image}" alt="" class="w-6 h-6 rounded-md object-cover">
+                        <span class="font-medium text-gray-700 flex items-center gap-2 truncate">
+                            <img src="${item.image}" alt="" class="w-6 h-6 rounded-md object-cover hidden sm:block">
                             ${item.name}
                         </span>
-                        <div class="flex items-center gap-4">
-                            <span class="text-gray-600 font-semibold">${item.price.toFixed(2)} ETB</span>
+                        <div class="flex items-center gap-4 pl-2">
+                            <span class="text-gray-600 font-semibold whitespace-nowrap">${item.price.toFixed(2)} ETB</span>
                             <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none" title="Remove">&times;</button>
                         </div>
                     </div>
@@ -163,6 +187,53 @@
                 sendBtnEl.innerText = originalText;
                 sendBtnEl.classList.replace("bg-green-500", "bg-blue-600");
             }, 2000);
+        }
+
+        // 3. Real-Time Ticket Status Logic
+        socket.on('sync-orders', (data) => {
+            activeTickets = data.activeOrders;
+            completedTickets = data.completedOrders;
+            renderTicketStatus();
+        });
+
+        function renderTicketStatus() {
+            sentOrdersListEl.innerHTML = '';
+
+            if (activeTickets.length === 0 && completedTickets.length === 0) {
+                sentOrdersListEl.innerHTML = '<p class="text-gray-400 italic">No active tickets.</p>';
+                return;
+            }
+
+            // Show active tickets that are cooking
+            activeTickets.forEach(order => {
+                const summary = order.items.map(i => i.name).join(', ');
+                sentOrdersListEl.innerHTML += `
+                    <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200 flex flex-col gap-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-yellow-900">Order #${order.id}</span>
+                            <span class="text-xs text-yellow-700 font-bold flex items-center gap-1">
+                                <span class="animate-pulse">🔥</span> Cooking...
+                            </span>
+                        </div>
+                        <p class="text-sm text-yellow-800 truncate" title="${summary}">${summary}</p>
+                    </div>
+                `;
+            });
+
+            // Show the last 5 completed tickets so the waitress knows what to pick up
+            const recentCompleted = [...completedTickets].reverse().slice(0, 5);
+            recentCompleted.forEach(order => {
+                const summary = order.items.map(i => i.name).join(', ');
+                sentOrdersListEl.innerHTML += `
+                    <div class="bg-green-50 p-3 rounded-lg border border-green-200 flex flex-col gap-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-green-900">Order #${order.id}</span>
+                            <span class="text-xs text-green-700 font-bold">✓ Ready/Served</span>
+                        </div>
+                        <p class="text-sm text-green-800 truncate" title="${summary}">${summary}</p>
+                    </div>
+                `;
+            });
         }
 
         renderCart();
