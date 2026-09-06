@@ -79,7 +79,7 @@
             renderHistory();
         });
 
-        function renderKitchen() {
+       function renderKitchen() {
             kitchenOrdersEl.innerHTML = '';
             activeCountEl.innerText = `${activeKitchenOrders.length} Orders`;
 
@@ -102,12 +102,13 @@
                     itemsListHTML += `<li class="ml-4 list-disc text-gray-800 font-medium">${count}x ${name}</li>`;
                 }
                 
+                // THIS IS WHERE THE UPDATED HTML WENT
                 kitchenOrdersEl.innerHTML += `
                     <div class="bg-yellow-50 p-4 rounded-lg shadow-sm border-2 border-yellow-300">
                         <div class="flex justify-between items-start mb-3 border-b border-yellow-200 pb-3">
                             <div>
-                                <h4 class="font-bold text-xl text-yellow-900">Order #${order.id}</h4>
-                                <div class="flex flex-col sm:flex-row sm:gap-4 text-sm font-semibold text-yellow-700">
+                                <h4 class="font-bold text-xl text-yellow-900">Order #${order.id} <span class="bg-yellow-300 text-yellow-900 px-2 py-1 rounded text-sm ml-2">Table ${order.table}</span></h4>
+                                <div class="flex flex-col sm:flex-row sm:gap-4 text-sm font-semibold text-yellow-700 mt-1">
                                     <span>${order.items.length} items total</span>
                                     <span class="text-gray-700">Value: ${orderTotal.toFixed(2)} ETB</span>
                                 </div>
@@ -124,6 +125,7 @@
             });
         }
 
+        // RE-PASTE THIS ONE TOO SO TABLE NUMBERS SHOW IN THE HISTORY
         function renderHistory() {
             completedListEl.innerHTML = '';
             itemsServedCountEl.innerText = completedOrders.length;
@@ -149,7 +151,7 @@
                 completedListEl.innerHTML += `
                     <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 flex flex-col gap-1">
                         <div class="flex justify-between items-center">
-                            <span class="font-bold text-gray-200">Order #${order.id}</span>
+                            <span class="font-bold text-gray-200">Order #${order.id} | Table ${order.table}</span>
                             <div class="flex items-center gap-3">
                                 <span class="text-sm font-semibold text-yellow-400">${completedOrderTotal.toFixed(2)} ETB</span>
                                 <span class="text-xs text-green-400 font-bold">✓ Served</span>

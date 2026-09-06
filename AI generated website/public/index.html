@@ -175,12 +175,38 @@
             fetchUsers(); 
         });
 
-        async function adminClearLog() {
+       async function adminClearLog() {
             if (confirm("Are you sure you want to permanently delete the completed order log?")) {
                 await fetch('/api/clear-log', { method: 'POST' });
                 alert("Daily log has been cleared.");
             }
         }
+
+        // ==========================================
+        // PASTE THE NEW FUNCTION RIGHT HERE:
+        async function exportCSV() {
+            const res = await fetch('/api/orders/history');
+            const orders = await res.json();
+            
+            if (orders.length === 0) return alert("No completed orders to export today.");
+
+            let csvContent = "Order ID,Time,Table Number,Items,Total (ETB)\n";
+
+            orders.forEach(order => {
+                const itemSummary = order.items.map(i => i.name).join(' + ');
+                const total = order.items.reduce((sum, item) => sum + item.price, 0);
+                csvContent += `${order.id},${order.timestamp},${order.table},"${itemSummary}",${total}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `AZ_Food_Report_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        // ==========================================
 
         checkInitialState();
     </script>
