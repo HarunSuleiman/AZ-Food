@@ -3,37 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant System Portal</title>
+    <title>AZ-Food Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center p-6 font-sans text-gray-800">
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-md w-full bg-white p-8 rounded-xl shadow-md border border-gray-200">
+        <h1 class="text-3xl font-bold text-center text-gray-900 mb-6">AZ-Food Login</h1>
+        
+        <div id="error-msg" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 text-sm text-center"></div>
 
-    <div class="max-w-2xl w-full text-center">
-        <header class="mb-10">
-            <h1 class="text-5xl font-bold text-gray-900 mb-4">AZ-Food System</h1>
-            <p class="text-lg text-gray-500">Select your terminal to continue</p>
-        </header>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <!-- Waitress Link -->
-            <a href="/waitress.html" class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-300 transition-all group block">
-                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl group-hover:scale-110 transition-transform">
-                    📝
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Waitress Terminal</h2>
-                <p class="text-gray-500 text-sm">Take orders and send tickets to the kitchen.</p>
-            </a>
-
-            <!-- Kitchen Link -->
-            <a href="/kitchen.html" class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-green-300 transition-all group block">
-                <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl group-hover:scale-110 transition-transform">
-                    👨‍🍳
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Kitchen Display</h2>
-                <p class="text-gray-500 text-sm">View active tickets and mark orders as served.</p>
-            </a>
-        </div>
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Username</label>
+                <input type="text" id="username" class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" id="password" class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors">
+                Log In
+            </button>
+        </form>
     </div>
 
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Route to the correct terminal based on role
+                if (data.role === 'admin') window.location.href = '/admin.html';
+                else if (data.role === 'kitchen') window.location.href = '/kitchen.html';
+                else if (data.role === 'waitress') window.location.href = '/waitress.html';
+            } else {
+                errorMsg.innerText = data.message;
+                errorMsg.classList.remove('hidden');
+            }
+        });
+    </script>
 </body>
 </html>

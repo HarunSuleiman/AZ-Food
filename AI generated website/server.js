@@ -3,6 +3,9 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
+// Add this near the top with your other app.use statements
+app.use(express.json()); 
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -15,6 +18,37 @@ let activeOrders = [];
 let completedOrders = [];
 let orderIdCounter = 101;
 
+
+
+
+// Temporary User Memory (Default Admin Account)
+let users = [
+    { username: 'admin', password: 'password123', role: 'admin' }
+];
+
+// Login API
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    const user = users.find(u => u.username === username && u.password === password);
+    
+    if (user) {
+        res.json({ success: true, role: user.role });
+    } else {
+        res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+});
+
+// Admin API: Get all users
+app.get('/api/users', (req, res) => {
+    res.json(users);
+});
+
+// Admin API: Create a new user
+app.post('/api/users', (req, res) => {
+    const { username, password, role } = req.body;
+    users.push({ username, password, role });
+    res.json({ success: true, message: "User added" });
+});
 // WebSocket Connection Logic
 io.on("connection", (socket) => {
   console.log(`New device connected: ${socket.id}`);
