@@ -278,7 +278,7 @@
                 <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
                     <p style="margin: 2px 0;">Order #: ${order.id}</p>
                     <p style="margin: 2px 0;">Table #: ${order.table}</p>
-                    <p style="margin: 2px 0;">Time: ${order.timestamp}</p>
+                    <p style="margin: 2px 0;">Time: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
                 <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
                     ${itemsHTML}
