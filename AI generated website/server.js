@@ -14,9 +14,8 @@ app.use(express.static(path.join(__dirname, "public")));
 // ==========================================
 // 1. MySQL Cloud Database Connection
 // ==========================================
-// Paste your TiDB (or other cloud database) connection string right here!
 const connectionString =
-  "mysql://YOUR_USERNAME:YOUR_PASSWORD@YOUR_HOST:4000/YOUR_DATABASE_NAME";
+  "mysql://VVMohrySZbMoH4K.root:UFGpOvH05GOB7sa3@gateway01.eu-central-1.prod.aws.tidbcloud.com:4000/sys";
 
 const pool = mysql.createPool({
   uri: connectionString,
@@ -87,12 +86,10 @@ app.post("/api/users", async (req, res) => {
     res.json({ success: true, message: "User added permanently!" });
   } catch (error) {
     console.error(error);
-    res
-      .status(400)
-      .json({
-        success: false,
-        message: "Failed to add user (Username might already exist)",
-      });
+    res.status(400).json({
+      success: false,
+      message: "Failed to add user (Username might already exist)",
+    });
   }
 });
 
