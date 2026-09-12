@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // 1. MySQL Cloud Database Connection
 // ==========================================
 const connectionString =
-  "mysql://VVMohrySZbMoH4K.root:UFGpOvH05GOB7sa3@gateway01.eu-central-1.prod.aws.tidbcloud.com:4000/sys";
+  "mysql://VVMohrySZbMoH4K.root:UFGpOvH05GOB7sa3@gateway01.eu-central-1.prod.aws.tidbcloud.com:4000/test";
 
 const pool = mysql.createPool({
   uri: connectionString,
