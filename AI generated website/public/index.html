@@ -66,7 +66,6 @@
             </section>
 
             <!-- System Controls -->
-           
             <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 col-span-1 md:col-span-2">
                 <h2 class="text-xl font-bold mb-4 border-b pb-2">System Controls & Reports</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -146,17 +145,50 @@
             errorMsg.classList.add('hidden');
         }
 
+        // Fetch and display all users (with Remove Access buttons)
         async function fetchUsers() {
             const res = await fetch('/api/users');
             const users = await res.json();
             const list = document.getElementById('user-list');
             list.innerHTML = '';
+            
             users.forEach(u => {
-                list.innerHTML += `<li class="bg-gray-50 p-3 rounded-lg border flex justify-between items-center">
-                    <span class="font-bold text-gray-700">${u.username}</span>
-                    <span class="text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${u.role}</span>
+                // If it is the master admin, hide the delete button to prevent accidental lockouts
+                const deleteBtn = u.username !== 'admin' 
+                    ? `<button onclick="deleteUser('${u.username}')" class="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 px-3 py-1 rounded text-sm font-bold transition-colors shadow-sm">Remove Access</button>` 
+                    : `<span class="text-gray-400 text-sm italic px-3 py-1">Master Account</span>`;
+
+                list.innerHTML += `
+                <li class="bg-gray-50 p-4 rounded-lg border flex justify-between items-center mb-2 shadow-sm">
+                    <div>
+                        <span class="font-bold text-gray-800 text-lg">${u.username}</span>
+                        <span class="text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-3 py-1 rounded-full ml-3">${u.role}</span>
+                    </div>
+                    <div>
+                        ${deleteBtn}
+                    </div>
                 </li>`;
             });
+        }
+
+        // Function to trigger the deletion in the database
+        async function deleteUser(username) {
+            // Ask for confirmation before deleting
+            if (confirm(`Are you sure you want to permanently remove access for the user: ${username}?`)) {
+                try {
+                    const response = await fetch(`/api/users/${username}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        fetchUsers(); // Refresh the list instantly so the name disappears
+                    } else {
+                        alert("Error: " + result.message);
+                    }
+                } catch (error) {
+                    console.error("Failed to delete user", error);
+                    alert("Failed to connect to the database.");
+                }
+            }
         }
 
         document.getElementById('add-user-form').addEventListener('submit', async (e) => {
@@ -182,8 +214,6 @@
             }
         }
 
-        // ==========================================
-        // PASTE THE NEW FUNCTION RIGHT HERE:
         async function exportCSV() {
             const res = await fetch('/api/orders/history');
             const orders = await res.json();
@@ -206,7 +236,6 @@
             link.click();
             document.body.removeChild(link);
         }
-        // ==========================================
 
         checkInitialState();
     </script>
